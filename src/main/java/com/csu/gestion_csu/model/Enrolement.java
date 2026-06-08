@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "enrolements", indexes = {
@@ -39,6 +41,35 @@ public class Enrolement {
     private java.time.LocalDate dateNaissance;
     private String adresse;
 
+    // === Champs conformes au formulaire Kobo (codes Kobo stockés tels quels) ===
+    // Affiliation
+    private String regionAffiliation;
+    private String organismeAssureur;
+    private String ogd;
+    private String typeRegime;
+    private String typeBeneficiaire;
+    private String typeAdhesion;
+    // Résidence (cascade)
+    private String regionResidence;
+    private String departementResidence;
+    private String communeResidence;
+    // Identité étendue
+    private String lieuNaissance;
+    private String situationMatrimoniale;
+    private String secteurActivite;
+    private String autreTelephone;
+    // Pièce d'identité
+    private String typePieceIdentite;
+    private String numeroPiece1;
+    private String numeroPiece2;
+    private String numeroPiece3;
+    // Paiement
+    private Integer montantFraisAdhesion;
+    private Integer montantCotisation;
+    private String moyenPaiement;
+    private Integer montantVersement;
+    private String statutPaiement;
+
     @Column(columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     private LocalDateTime dateEnrolement;
 
@@ -51,6 +82,21 @@ public class Enrolement {
     private String observations;
 
     private Long bureauCsuId;
+
+    // Personnes à charge (adhésion familiale)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JoinColumn(name = "enrolement_id")
+    @Builder.Default
+    private List<PersonneACharge> personnesACharge = new ArrayList<>();
+
+    // === Synchronisation KoboToolbox ===
+    // Identifiant unique de la soumission Kobo (uuid:...) envoyé via meta/instanceID.
+    private String koboUuid;
+    // EN_ATTENTE, SYNCED, ECHEC, NON_SYNC (désactivé/non configuré)
+    private String koboSyncStatus;
+    @Column(columnDefinition = "TEXT")
+    private String koboSyncError;
+    private LocalDateTime koboSyncDate;
 
     // Champs d'affichage (non persistés) : noms résolus de l'agent et du bureau
     @Transient

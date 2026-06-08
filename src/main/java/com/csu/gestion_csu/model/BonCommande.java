@@ -37,6 +37,9 @@ public class BonCommande {
     private Long patientId;
     private String patientNom;       // "Prénom Nom"
     private String numeroDossier;
+    private String codeAssureImmatriculation; // CODE ASSURE / NUM D'immatriculation
+    private Integer ageBeneficiaire;          // Age du bénéficiaire
+    private String sexeBeneficiaire;          // M ou F
 
     // Agent émetteur
     private Long agentId;
@@ -47,6 +50,12 @@ public class BonCommande {
 
     // Référence à la lettre de garantie (= dossier patient enregistré)
     private String referenceLettreGarantie;
+
+    // Type de circuit : PUBLIQUE (PEC 80%) ou OFFICINE (PEC 50%)
+    private String typeCircuit;
+
+    // Structure de santé
+    private String structureSante;
 
     // Contexte médical : ordonnance émise par le médecin de l'établissement
     private String medecinPrescripteur;   // Médecin ayant établi l'ordonnance
@@ -70,6 +79,9 @@ public class BonCommande {
     private String observations;
 
     private Double montantEstime;
+    private Double montantPatient;       // Montant à payer par le patient
+    private Double montantTiersPayant;   // Montant à facturer au tiers payant
+    private String tauxPriseEnCharge;    // Taux de prise en charge global
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "bon_commande_lignes", joinColumns = @JoinColumn(name = "bon_commande_id"))

@@ -14,6 +14,8 @@ import com.csu.gestion_csu.repository.EnrolementRepository;
 import com.csu.gestion_csu.repository.PatientRepository;
 import com.csu.gestion_csu.repository.PointageRepository;
 import com.csu.gestion_csu.repository.UtilisateurRepository;
+import com.csu.gestion_csu.repository.BonCommandeRepository;
+import com.csu.gestion_csu.repository.LettreGarantieRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -47,6 +49,8 @@ public class AdminDashboardController {
     private final ActiviteRepository activiteRepository;
     private final ConstatRepository constatRepository;
     private final PointageRepository pointageRepository;
+    private final BonCommandeRepository bonCommandeRepository;
+    private final LettreGarantieRepository lettreGarantieRepository;
 
     /** Heure limite d'arrivée : au-delà, l'agent est considéré en retard. */
     private static final java.time.LocalTime HEURE_LIMITE = java.time.LocalTime.of(8, 0);
@@ -101,6 +105,8 @@ public class AdminDashboardController {
         stats.put("totalEnrolements", enrolementRepository.count());
         stats.put("totalActivites", activiteRepository.count());
         stats.put("totalConstats", constatRepository.count());
+        stats.put("totalBonsCommande", bonCommandeRepository.count());
+        stats.put("totalLettresGarantie", lettreGarantieRepository.count());
 
         // Map bureauId -> nom (pour résoudre le bureau des utilisateurs)
         Map<Long, String> bureauNomById = bureaux.stream()
@@ -136,6 +142,8 @@ public class AdminDashboardController {
         Map<Long, Long> enrolementsParBureau = toCountMap(enrolementRepository.countByBureauGrouped());
         Map<Long, Long> activitesParBureau = toCountMap(activiteRepository.countByBureauGrouped());
         Map<Long, Long> constatsParBureau = toCountMap(constatRepository.countByBureauGrouped());
+        Map<Long, Long> bonsParBureau = toCountMap(bonCommandeRepository.countByBureauGrouped());
+        Map<Long, Long> lettresParBureau = toCountMap(lettreGarantieRepository.countByBureauGrouped());
 
         List<Map<String, Object>> bureauxStats = bureaux.stream()
                 .map(b -> {
@@ -144,6 +152,8 @@ public class AdminDashboardController {
                     long enrolements = enrolementsParBureau.getOrDefault(b.getId(), 0L);
                     long activites = activitesParBureau.getOrDefault(b.getId(), 0L);
                     long constats = constatsParBureau.getOrDefault(b.getId(), 0L);
+                    long bons = bonsParBureau.getOrDefault(b.getId(), 0L);
+                    long lettres = lettresParBureau.getOrDefault(b.getId(), 0L);
                     List<Utilisateur> agents = agentsParBureau.getOrDefault(b.getId(), Collections.emptyList());
                     map.put("id", b.getId());
                     map.put("nom", b.getNom());
@@ -158,6 +168,8 @@ public class AdminDashboardController {
                     map.put("enrolements", enrolements);
                     map.put("activites", activites);
                     map.put("constats", constats);
+                    map.put("bonsCommande", bons);
+                    map.put("lettresGarantie", lettres);
                     return map;
                 })
                 .sorted((a, b) -> Long.compare(
@@ -184,6 +196,8 @@ public class AdminDashboardController {
         Map<Long, Long> enrolementsParAgent = toCountMap(enrolementRepository.countByAgentGrouped());
         Map<Long, Long> activitesParAgent = toCountMap(activiteRepository.countByAgentGrouped());
         Map<Long, Long> constatsParAgent = toCountMap(constatRepository.countByResponsableGrouped());
+        Map<Long, Long> bonsParAgent = toCountMap(bonCommandeRepository.countByAgentGrouped());
+        Map<Long, Long> lettresParAgent = toCountMap(lettreGarantieRepository.countByAgentGrouped());
 
         List<Utilisateur> agents = utilisateurs.stream()
                 .filter(u -> "AGENT".equals(u.getRole()))
@@ -194,6 +208,8 @@ public class AdminDashboardController {
             long e = enrolementsParAgent.getOrDefault(u.getId(), 0L);
             long a = activitesParAgent.getOrDefault(u.getId(), 0L);
             long c = constatsParAgent.getOrDefault(u.getId(), 0L);
+            long bc = bonsParAgent.getOrDefault(u.getId(), 0L);
+            long lg = lettresParAgent.getOrDefault(u.getId(), 0L);
             Map<String, Object> m = new HashMap<>();
             m.put("id", u.getId());
             m.put("nom", u.getNom());
@@ -204,7 +220,9 @@ public class AdminDashboardController {
             m.put("enrolements", e);
             m.put("activites", a);
             m.put("constats", c);
-            m.put("total", p + e + a + c);
+            m.put("bonsCommande", bc);
+            m.put("lettresGarantie", lg);
+            m.put("total", p + e + a + c + bc + lg);
             return m;
         }).sorted((x, y) -> Long.compare((Long) y.get("total"), (Long) x.get("total")))
                 .collect(Collectors.toList());
@@ -214,6 +232,8 @@ public class AdminDashboardController {
         long totalEnrolements = lignes.stream().mapToLong(m -> (Long) m.get("enrolements")).sum();
         long totalActivites = lignes.stream().mapToLong(m -> (Long) m.get("activites")).sum();
         long totalConstats = lignes.stream().mapToLong(m -> (Long) m.get("constats")).sum();
+        long totalBonsCommande = lignes.stream().mapToLong(m -> (Long) m.get("bonsCommande")).sum();
+        long totalLettresGarantie = lignes.stream().mapToLong(m -> (Long) m.get("lettresGarantie")).sum();
 
         Map<String, Object> result = new HashMap<>();
         result.put("agents", lignes);
@@ -225,6 +245,8 @@ public class AdminDashboardController {
         result.put("totalEnrolements", totalEnrolements);
         result.put("totalActivites", totalActivites);
         result.put("totalConstats", totalConstats);
+        result.put("totalBonsCommande", totalBonsCommande);
+        result.put("totalLettresGarantie", totalLettresGarantie);
         result.put("agentTop", lignes.isEmpty() ? null : (lignes.get(0).get("prenom") + " " + lignes.get(0).get("nom")));
         // Nombre d'agents sans aucune contribution (inactivité opérationnelle)
         result.put("agentsSansActivite", lignes.stream().filter(m -> (Long) m.get("total") == 0L).count());

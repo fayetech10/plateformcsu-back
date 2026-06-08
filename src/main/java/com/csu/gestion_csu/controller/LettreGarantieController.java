@@ -1,8 +1,10 @@
 package com.csu.gestion_csu.controller;
 
+import com.csu.gestion_csu.model.Bureau;
 import com.csu.gestion_csu.model.LettreGarantie;
 import com.csu.gestion_csu.model.Patient;
 import com.csu.gestion_csu.model.Utilisateur;
+import com.csu.gestion_csu.repository.BureauRepository;
 import com.csu.gestion_csu.repository.LettreGarantieRepository;
 import com.csu.gestion_csu.repository.PatientRepository;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +35,7 @@ public class LettreGarantieController {
 
     private final LettreGarantieRepository lettreRepository;
     private final PatientRepository patientRepository;
+    private final BureauRepository bureauRepository;
 
     private Utilisateur getCurrentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -46,6 +49,22 @@ public class LettreGarantieController {
         String prefix = "LG-" + Year.now().getValue() + "-";
         long count = lettreRepository.countByReferenceStartingWith(prefix);
         return String.format("%s%06d", prefix, count + 1);
+    }
+
+    /** Liste toutes les lettres de garantie avec pagination (pour l'Admin) */
+    @GetMapping
+    public ResponseEntity<org.springframework.data.domain.Page<LettreGarantie>> getLettres(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size,
+                org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "dateEmission"));
+        if (search != null && !search.trim().isEmpty()) {
+            return ResponseEntity.ok(
+                    lettreRepository.findByReferenceContainingIgnoreCaseOrPatientNomContainingIgnoreCase(
+                            search, search, pageable));
+        }
+        return ResponseEntity.ok(lettreRepository.findAll(pageable));
     }
 
     /** Liste des lettres d'un patient (incluant celles partagées par CNI ou Matricule). */
@@ -160,8 +179,34 @@ public class LettreGarantieController {
             return ResponseEntity.ok(body);
         }
 
-        // Sinon, nouvelle émission
         Utilisateur user = getCurrentUser();
+
+        // Résoudre le nom de la structure via la structure de l'agent
+        String structureNom = null;
+        if (user != null && user.getStructureId() != null) {
+            structureNom = bureauRepository.findById(user.getStructureId())
+                    .map(Bureau::getNom)
+                    .orElse(null);
+        } else if (p.getBureauCsuId() != null) {
+            // Fallback sur le bureau du patient si l'agent n'a pas de structure
+            structureNom = bureauRepository.findById(p.getBureauCsuId())
+                    .map(Bureau::getNom)
+                    .orElse(null);
+        }
+
+        // Déterminer le code assuré/immatriculation
+        String codeAssure = p.getNumeroMatricule();
+        if (codeAssure == null || codeAssure.isBlank()) {
+            codeAssure = p.getNumeroCni();
+        }
+
+        // Calculer l'âge
+        Integer age = null;
+        if (p.getDateNaissance() != null) {
+            age = java.time.Period.between(p.getDateNaissance(), LocalDate.now()).getYears();
+        }
+
+        // Sinon, nouvelle émission
         LocalDateTime now = LocalDateTime.now();
         LettreGarantie lettre = LettreGarantie.builder()
                 .reference(genererReference())
@@ -170,6 +215,13 @@ public class LettreGarantieController {
                 .numeroDossier(p.getNumeroDossier())
                 .numeroCni(p.getNumeroCni())
                 .categorie(p.getCategorie())
+                .ageBeneficiaire(age)
+                .sexeBeneficiaire(p.getSexe())
+                .structure(structureNom)
+                .typeAssure(p.getCategorie())
+                .codeAssureImmatriculation(codeAssure)
+                .motif(p.getDiagnosticMotif())
+                .tauxPriseEnCharge("80%")  // Forcé à 80% comme demandé
                 .dateEmission(now)
                 .dateExpiration(now.toLocalDate().plusDays(LettreGarantie.VALIDITE_JOURS))
                 .agentId(user == null ? null : user.getId())

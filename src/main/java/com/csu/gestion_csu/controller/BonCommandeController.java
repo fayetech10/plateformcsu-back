@@ -3,6 +3,7 @@ package com.csu.gestion_csu.controller;
 import com.csu.gestion_csu.model.BonCommande;
 import com.csu.gestion_csu.model.Utilisateur;
 import com.csu.gestion_csu.repository.BonCommandeRepository;
+import com.csu.gestion_csu.repository.PatientRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -12,6 +13,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Year;
 import java.util.List;
@@ -23,6 +25,7 @@ import java.util.List;
 public class BonCommandeController {
 
     private final BonCommandeRepository bonCommandeRepository;
+    private final PatientRepository patientRepository;
 
     private Utilisateur getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -98,6 +101,29 @@ public class BonCommandeController {
         if (bon.getMotif() == null || bon.getMotif().isBlank()) {
             bon.setMotif("Médicaments non disponibles à l'établissement de santé");
         }
+
+        // Auto-fill patient data for official document
+        if (bon.getPatientId() != null) {
+            patientRepository.findById(bon.getPatientId()).ifPresent(patient -> {
+                if (bon.getCodeAssureImmatriculation() == null || bon.getCodeAssureImmatriculation().isBlank()) {
+                    String code = patient.getNumeroMatricule();
+                    if (code == null || code.isBlank()) code = patient.getNumeroCni();
+                    bon.setCodeAssureImmatriculation(code);
+                }
+                if (bon.getSexeBeneficiaire() == null || bon.getSexeBeneficiaire().isBlank()) {
+                    bon.setSexeBeneficiaire(patient.getSexe());
+                }
+                if (bon.getAgeBeneficiaire() == null && patient.getDateNaissance() != null) {
+                    bon.setAgeBeneficiaire(
+                        java.time.Period.between(patient.getDateNaissance(), LocalDate.now()).getYears()
+                    );
+                }
+                if (bon.getStructureSante() == null || bon.getStructureSante().isBlank()) {
+                    bon.setStructureSante(patient.getService());
+                }
+            });
+        }
+
         return ResponseEntity.ok(bonCommandeRepository.save(bon));
     }
 
@@ -125,6 +151,14 @@ public class BonCommandeController {
                     existing.setStatut(details.getStatut());
                     existing.setObservations(details.getObservations());
                     existing.setMontantEstime(details.getMontantEstime());
+                    existing.setTypeCircuit(details.getTypeCircuit());
+                    existing.setCodeAssureImmatriculation(details.getCodeAssureImmatriculation());
+                    existing.setAgeBeneficiaire(details.getAgeBeneficiaire());
+                    existing.setSexeBeneficiaire(details.getSexeBeneficiaire());
+                    existing.setStructureSante(details.getStructureSante());
+                    existing.setMontantPatient(details.getMontantPatient());
+                    existing.setMontantTiersPayant(details.getMontantTiersPayant());
+                    existing.setTauxPriseEnCharge(details.getTauxPriseEnCharge());
                     existing.setLignes(details.getLignes());
                     return ResponseEntity.ok(bonCommandeRepository.save(existing));
                 })

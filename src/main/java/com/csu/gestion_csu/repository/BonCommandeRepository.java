@@ -19,4 +19,10 @@ public interface BonCommandeRepository extends JpaRepository<BonCommande, Long> 
 
     /** Derniers bons de commande — flux d'activité admin. */
     List<BonCommande> findTop40ByOrderByDateCreationDesc();
+
+    @org.springframework.data.jpa.repository.Query("SELECT b.bureauCsuId, COUNT(b) FROM BonCommande b WHERE b.bureauCsuId IS NOT NULL GROUP BY b.bureauCsuId")
+    List<Object[]> countByBureauGrouped();
+
+    @org.springframework.data.jpa.repository.Query("SELECT b.agentId, COUNT(b) FROM BonCommande b WHERE b.agentId IS NOT NULL GROUP BY b.agentId")
+    List<Object[]> countByAgentGrouped();
 }

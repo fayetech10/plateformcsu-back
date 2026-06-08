@@ -25,8 +25,8 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class LettreGarantie {
 
-    /** Durée de validité d'une lettre de garantie, en jours. */
-    public static final int VALIDITE_JOURS = 14;
+    /** Durée de validité d'une lettre de garantie, en jours (1 mois). */
+    public static final int VALIDITE_JOURS = 30;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -40,6 +40,25 @@ public class LettreGarantie {
     private String numeroDossier;
     private String numeroCni;
     private String categorie;
+
+    private Integer ageBeneficiaire;
+    private String sexeBeneficiaire;
+
+    /** Nom de la structure (établissement de santé). */
+    private String structure;
+
+    /** Type d'assuré (Titulaire, Ayant-droit, etc.). */
+    private String typeAssure;
+
+    /** Code assuré / immatriculation. */
+    private String codeAssureImmatriculation;
+
+    /** Motif de la prise en charge. */
+    @Column(columnDefinition = "TEXT")
+    private String motif;
+
+    /** Taux de prise en charge (ex: 80%, 100%). */
+    private String tauxPriseEnCharge;
 
     @Column(nullable = false)
     private LocalDateTime dateEmission;

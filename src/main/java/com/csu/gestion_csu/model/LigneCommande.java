@@ -22,4 +22,8 @@ public class LigneCommande {
     private String posologie;   // Instructions / posologie
 
     private Double prixUnitaire;
+
+    private Double total;                // Quantité × Prix Unitaire
+
+    private String tauxPriseEnCharge;    // Taux de prise en charge par ligne
 }

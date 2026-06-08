@@ -25,5 +25,14 @@ public interface LettreGarantieRepository extends JpaRepository<LettreGarantie, 
 
     List<LettreGarantie> findByNumeroCniIgnoreCaseOrderByDateEmissionDesc(String numeroCni);
 
+    org.springframework.data.domain.Page<LettreGarantie> findByReferenceContainingIgnoreCaseOrPatientNomContainingIgnoreCase(
+            String reference, String patientNom, org.springframework.data.domain.Pageable pageable);
+
     List<LettreGarantie> findTop40ByOrderByDateEmissionDesc();
+
+    @org.springframework.data.jpa.repository.Query("SELECT l.bureauCsuId, COUNT(l) FROM LettreGarantie l WHERE l.bureauCsuId IS NOT NULL GROUP BY l.bureauCsuId")
+    List<Object[]> countByBureauGrouped();
+
+    @org.springframework.data.jpa.repository.Query("SELECT l.agentId, COUNT(l) FROM LettreGarantie l WHERE l.agentId IS NOT NULL GROUP BY l.agentId")
+    List<Object[]> countByAgentGrouped();
 }
